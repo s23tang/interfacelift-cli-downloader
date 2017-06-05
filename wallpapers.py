@@ -113,7 +113,7 @@ def runmenu(menu, parent, pos, page):
             screen.border(0)
             screen.addstr(2,2, menu['title'], curses.A_STANDOUT)
             screen.addstr(4,2, 'Resolution: \'{}\', Saving in: \'{}\''.format(config[RESOLUTION], config[WP_DIR]), curses.A_BOLD)
-            screen.addstr(6, 2, 'Controls: \'UP DOWN\' change rows, \'LEFT RIGHT\' change pages, \'ENTER\' to save/delete, \'O\' to open saved')
+            screen.addstr(6, 2, 'Controls: \'UP DOWN\' change rows, \'LEFT RIGHT\' change pages, \'ENTER\' to save/preview, \'BACKSPACE\' to delete')
             screen.addstr(8,2, 'Page {} - {}'.format(page, menu['subtitle']), curses.A_BOLD)
 
             # Display all the menu items, showing the 'pos' item highlighted
