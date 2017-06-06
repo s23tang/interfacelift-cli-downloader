@@ -1,3 +1,4 @@
+#-*- coding: utf-8 -*-
 import re
 import requests
 import yaml
@@ -6,6 +7,9 @@ from bs4 import BeautifulSoup
 from time import sleep
 from subprocess import call
 import curses, os
+import locale
+
+locale.setlocale(locale.LC_ALL, '')
 
 CONFIG_LOCATION = os.path.expanduser('~/.wpconfig')
 
@@ -85,7 +89,7 @@ def download(url, filepath, menu, getin, curr_page):
 
 def generate_parsed_command(parsed_item):
     dl_path = os.path.join(config[WP_DIR], parsed_item['url'].split('/')[-1])
-    text = '{}{}'.format(parsed_item['title'], SAVED_TEXT if os.path.isfile(dl_path) else '')
+    text = '{}{}'.format(parsed_item['title'].encode('utf-8'), SAVED_TEXT if os.path.isfile(dl_path) else '')
     return { 'title': text, 'type': COMMAND, 'url': DOMAIN + parsed_item['url'], 'dl_path': dl_path}
 
 def get_menu_data(page):
@@ -113,7 +117,7 @@ def runmenu(menu, parent, pos, page):
             screen.border(0)
             screen.addstr(2,2, menu['title'], curses.A_STANDOUT)
             screen.addstr(4,2, 'Resolution: \'{}\', Saving in: \'{}\''.format(config[RESOLUTION], config[WP_DIR]), curses.A_BOLD)
-            screen.addstr(6, 2, 'Controls: \'UP DOWN\' change rows, \'LEFT RIGHT\' change pages, \'ENTER\' to save/preview, \'BACKSPACE\' to delete')
+            screen.addstr(6, 2, 'Controls: \'↑ ↓ ← →\' rows/pages, \'ENTER\' save/preview, \'BACKSPACE\' delete, \'Q/ESC\' quit')
             screen.addstr(8,2, 'Page {} - {}'.format(page, menu['subtitle']), curses.A_BOLD)
 
             # Display all the menu items, showing the 'pos' item highlighted
