@@ -182,7 +182,8 @@ def processmenu(menu, parent=None):
                 os.remove(dl_path)
                 menu['options'][getin]['title'] = menu['options'][getin]['title'][:-len(SAVED_TEXT)]
 
-# Main program
-processmenu(get_menu_data(INITIAL_PAGE))
-curses.endwin() #VITAL! This closes out the menu system and returns you to the bash prompt.
-os.system('clear')
+
+def main():
+    processmenu(get_menu_data(INITIAL_PAGE))
+    curses.endwin()
+    os.system('clear')
