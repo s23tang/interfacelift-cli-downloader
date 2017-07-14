@@ -55,6 +55,18 @@ class WallpaperDL:
         self.h_color = curses.color_pair(1)
         self.n_color = curses.A_NORMAL
 
+        # Menu data
+        self.curr_pos = 0
+        self.curr_page = WallpaperDL.INITIAL_PAGE
+        self.menu_data = self.get_menu_data()
+
+        # Start running
+        self.run()
+
+        # Stop if exit
+        curses.endwin()
+        os.system('clear')
+
     def get_command(self, title, command):
         return {'title': title, 'type': WallpaperDL.COMMAND, 'command': command}
 
@@ -73,13 +85,13 @@ class WallpaperDL:
         wp_containers = soup.find_all('div', id=re.compile('^list_'))
         return map(self.parse_container, wp_containers)
 
-    def get_item_text(self, menu, index, page):
+    def get_item_text(self, index):
         return "{number} - {title}".format(
-            number=(page - 1) * len(menu['options']) + index + 1,
-            title=menu['options'][index]['title']
+            number=(self.curr_page - 1) * len(self.menu_data['options']) + index + 1,
+            title=self.menu_data['options'][index]['title']
         )
 
-    def download(self, url, filepath, menu, getin, curr_page):
+    def download(self, url, filepath):
         with open(filepath, 'wb') as handle:
             res = requests.get(url, stream=True)
             i = 0
@@ -88,10 +100,10 @@ class WallpaperDL:
                 if not block:
                     break
                 text = "{text} ({percent:.0f}%)".format(
-                    text=self.get_item_text(menu, getin, curr_page),
+                    text=self.get_item_text(self.curr_pos),
                     percent=i * 1.0 * WallpaperDL.DOWNLOAD_CHUNK / total_length * 100
                 )
-                self.screen.addstr(getin + 9, 4, text, self.n_color)
+                self.screen.addstr(self.curr_pos + 9, 4, text, self.n_color)
                 self.screen.refresh()
                 i += 1
                 handle.write(block)
@@ -107,35 +119,37 @@ class WallpaperDL:
             'dl_path': dl_path
         }
 
-    def get_menu_data(self, page):
+    def get_menu_data(self):
         parsed = self.get_parsed_wps(
             'https://interfacelift.com/wallpaper/downloads/date/widescreen/{}/index{}.html'.format(
-                config[RESOLUTION], page
+                config[RESOLUTION], self.curr_page
             )
         )
         return self.get_menu('Download Wallpaper', 'Wallpapers', map(self.generate_parsed_command, parsed))
 
-    def runmenu(self, menu, parent, pos, page):
-        optioncount = len(menu['options'])  # how many options in this menu
-
-        oldpos = None
-
+    def run_menu(self):
+        option_count = len(self.menu_data['options'])  # how many options in this menu
+        old_pos = None
         # Loop until return key is pressed
         while True:
-            if pos != oldpos:
-                oldpos = pos
+            if self.curr_pos != old_pos:
+                old_pos = self.curr_pos
                 self.screen.border(0)
-                self.screen.addstr(2, 2, menu['title'], curses.A_STANDOUT)
-                self.screen.addstr(4, 2, 'Resolution: \'{}\', Saving in: \'{}\''.format(config[RESOLUTION],
-                                                                                   config[WP_DIR]),
-                              curses.A_BOLD)
+                self.screen.addstr(2, 2, self.menu_data['title'], curses.A_STANDOUT)
+                self.screen.addstr(4, 2, 'Resolution: \'{}\', Saving in: \'{}\''.format(
+                    config[RESOLUTION],
+                    config[WP_DIR]
+                ), curses.A_BOLD)
                 self.screen.addstr(6, 2, WallpaperDL.INSTRUCTIONS)
-                self.screen.addstr(8, 2, 'Page {} - {}'.format(page, menu['subtitle']), curses.A_BOLD)
+                self.screen.addstr(8, 2, 'Page {} - {}'.format(
+                    self.curr_page,
+                    self.menu_data['subtitle']
+                ), curses.A_BOLD)
 
                 # Display all the menu items, showing the 'pos' item highlighted
-                for index in range(optioncount):
-                    textstyle = self.h_color if pos == index else self.n_color
-                    self.screen.addstr(9 + index, 4, self.get_item_text(menu, index, page), textstyle)
+                for index in range(option_count):
+                    textstyle = self.h_color if self.curr_pos == index else self.n_color
+                    self.screen.addstr(9+index, 4, self.get_item_text(index), textstyle)
                     self.screen.clrtoeol()
                     self.screen.refresh()
 
@@ -143,9 +157,9 @@ class WallpaperDL:
 
             # What is user input?
             if x == 258:  # down arrow
-                pos = (pos + 1) % optioncount
+                self.curr_pos = (self.curr_pos + 1) % option_count
             elif x == 259:  # up arrow
-                pos = (pos - 1) % optioncount
+                self.curr_pos = (self.curr_pos - 1) % option_count
             elif x == 260:  # left arrow
                 status = WallpaperDL.ST_PREV
                 break
@@ -162,39 +176,35 @@ class WallpaperDL:
                 status = WallpaperDL.ST_DEL
                 break
 
-        return pos, status
+        return status
 
-    def processmenu(self, menu, parent=None):
-        getin = 0
-        curr_page = WallpaperDL.INITIAL_PAGE
+    def run(self):
         while True:
-            getin, status = self.runmenu(menu, parent, getin, curr_page)
+            status = self.run_menu()
             if status == WallpaperDL.ST_EXIT:
                 break
             elif status == WallpaperDL.ST_PREV:
-                if curr_page > WallpaperDL.INITIAL_PAGE:
-                    curr_page -= 1
-                    menu = self.get_menu_data(curr_page)
+                if self.curr_page > WallpaperDL.INITIAL_PAGE:
+                    self.curr_page -= 1
+                    self.menu_data = self.get_menu_data()
             elif status == WallpaperDL.ST_NEXT:
-                curr_page += 1
-                menu = self.get_menu_data(curr_page)
-            elif status == WallpaperDL.ST_EXEC:
-                dl_url = menu['options'][getin]['url']
-                dl_path = menu['options'][getin]['dl_path']
-                if menu['options'][getin]['title'].endswith(WallpaperDL.SAVED_TEXT):
-                    call("open -a Preview {}".format(dl_path).split(' '))
-                else:
-                    self.download(dl_url, dl_path, menu, getin, curr_page)
-                    menu['options'][getin]['title'] += WallpaperDL.SAVED_TEXT
-            elif status == WallpaperDL.ST_DEL:
-                dl_path = menu['options'][getin]['dl_path']
-                if menu['options'][getin]['title'].endswith(WallpaperDL.SAVED_TEXT):
+                self.curr_page += 1
+                self.menu_data = self.get_menu_data()
+            else:
+                menu_link = self.menu_data['options'][self.curr_pos]
+                dl_path = menu_link['dl_path']
+                if status == WallpaperDL.ST_EXEC:
+                    dl_url = menu_link['url']
+                    if menu_link['title'].endswith(WallpaperDL.SAVED_TEXT):
+                        call('open -a Preview {}'.format(dl_path).split(' '))
+                    else:
+                        self.download(dl_url, dl_path)
+                        menu_link['title'] += WallpaperDL.SAVED_TEXT
+                elif status == WallpaperDL.ST_DEL and menu_link['title'].endswith(WallpaperDL.SAVED_TEXT):
                     os.remove(dl_path)
-                    menu['options'][getin]['title'] = menu['options'][getin]['title'][:-len(WallpaperDL.SAVED_TEXT)]
+                    menu_link['title'] = menu_link['title'][:-len(WallpaperDL.SAVED_TEXT)]
 
 
 def main():
-    wallpaper_cli = WallpaperDL()
-    wallpaper_cli.processmenu(wallpaper_cli.get_menu_data(wallpaper_cli.INITIAL_PAGE))
-    curses.endwin()
-    os.system('clear')
+    # Run wallpaper cli
+    WallpaperDL()
