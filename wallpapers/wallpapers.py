@@ -13,24 +13,36 @@ locale.setlocale(locale.LC_ALL, '')
 
 class WpConfig:
     FILE_PATH = os.path.expanduser('~/.wpconfig')
-    RESOLUTION = 'resolution'
-    WP_DIR = 'save-dir'
+    RESOLUTION = {'key': 'resolution', 'default': '3360x2100'}
+    WP_DIR = {'key': 'save-dir', 'default': '~/'}
 
     def __init__(self):
-        if os.path.isfile(WpConfig.FILE_PATH):
+        try:
             with open(WpConfig.FILE_PATH) as config_file:
                 config = yaml.load(config_file)
-        else:
-            config = self._create_config()
 
-        self.resolution = config[WpConfig.RESOLUTION]
-        self.save_dir = os.path.expanduser(config[WpConfig.WP_DIR])
+            self.resolution = config[WpConfig.RESOLUTION['key']]
+            self.save_dir = os.path.expanduser(config[WpConfig.WP_DIR['key']])
+        except (TypeError, IOError, KeyError):
+            self._create_config()
 
     def _create_config(self):
-        return {
-            WpConfig.RESOLUTION: '3360x2100',
-            WpConfig.WP_DIR: '~/'
+        print 'Config will be saved to {}'.format(WpConfig.FILE_PATH)
+        # Get save dir
+        save_dir = raw_input('\nDirectory to save wallpapers [{}]: '.format(WpConfig.WP_DIR['default']))
+        self.save_dir = os.path.expanduser(save_dir if save_dir else WpConfig.WP_DIR['default'])
+        # Get resolution
+        resolution = raw_input('\nWallpaper resolution [{}]: '.format(WpConfig.RESOLUTION['default']))
+        self.resolution = resolution if resolution else WpConfig.RESOLUTION['default']
+        # Create config
+        config = {
+            WpConfig.WP_DIR['key']: self.save_dir,
+            WpConfig.RESOLUTION['key']: self.resolution,
         }
+        with open(WpConfig.FILE_PATH, 'w') as config_file:
+            yaml.dump(config, config_file)
+        print '\nConfig successfully saved to {}'.format(WpConfig.FILE_PATH)
+        raw_input('\nPress ENTER to continue...')
 
 
 class WallpaperDL:
@@ -48,6 +60,9 @@ class WallpaperDL:
     INSTRUCTIONS = 'Controls: \'↑ ↓ ← →\' rows/pages, \'ENTER\' save/preview, \'BACKSPACE\' delete, \'Q/ESC\' quit'
 
     def __init__(self):
+        # Get config first
+        self.config = WpConfig()
+
         # Screen and curses setup
         self.screen = curses.initscr()
         curses.noecho()
@@ -62,7 +77,6 @@ class WallpaperDL:
         self.n_color = curses.A_NORMAL
 
         # Menu data
-        self.config = WpConfig()
         self.curr_pos = 0
         self.curr_page = WallpaperDL.INITIAL_PAGE
         self.menu_data = self.get_menu_data()
