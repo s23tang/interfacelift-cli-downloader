@@ -7,24 +7,30 @@ from subprocess import call
 import curses, os
 import locale
 
+# Init locale
 locale.setlocale(locale.LC_ALL, '')
 
-CONFIG_LOCATION = os.path.expanduser('~/.wpconfig')
 
-config = {}
-if os.path.isfile(CONFIG_LOCATION):
-    with open(CONFIG_LOCATION) as config_file:
-        config = yaml.load(config_file)
+class WpConfig:
+    FILE_PATH = os.path.expanduser('~/.wpconfig')
+    RESOLUTION = 'resolution'
+    WP_DIR = 'save-dir'
 
-RESOLUTION = 'resolution'
-WP_DIR = 'dir'
+    def __init__(self):
+        if os.path.isfile(WpConfig.FILE_PATH):
+            with open(WpConfig.FILE_PATH) as config_file:
+                config = yaml.load(config_file)
+        else:
+            config = self._create_config()
 
-if RESOLUTION not in config:
-    config[RESOLUTION] = '3360x2100'
-if WP_DIR not in config:
-    config[WP_DIR] = '~/'
+        self.resolution = config[WpConfig.RESOLUTION]
+        self.save_dir = os.path.expanduser(config[WpConfig.WP_DIR])
 
-config[WP_DIR] = os.path.expanduser(config[WP_DIR])
+    def _create_config(self):
+        return {
+            WpConfig.RESOLUTION: '3360x2100',
+            WpConfig.WP_DIR: '~/'
+        }
 
 
 class WallpaperDL:
@@ -56,6 +62,7 @@ class WallpaperDL:
         self.n_color = curses.A_NORMAL
 
         # Menu data
+        self.config = WpConfig()
         self.curr_pos = 0
         self.curr_page = WallpaperDL.INITIAL_PAGE
         self.menu_data = self.get_menu_data()
@@ -109,7 +116,7 @@ class WallpaperDL:
                 handle.write(block)
 
     def generate_parsed_command(self, parsed_item):
-        dl_path = os.path.join(config[WP_DIR], parsed_item['url'].split('/')[-1])
+        dl_path = os.path.join(self.config.save_dir, parsed_item['url'].split('/')[-1])
         text = '{}{}'.format(parsed_item['title'].encode('utf-8'),
                              WallpaperDL.SAVED_TEXT if os.path.isfile(dl_path) else '')
         return {
@@ -122,7 +129,7 @@ class WallpaperDL:
     def get_menu_data(self):
         parsed = self.get_parsed_wps(
             'https://interfacelift.com/wallpaper/downloads/date/widescreen/{}/index{}.html'.format(
-                config[RESOLUTION], self.curr_page
+                self.config.resolution, self.curr_page
             )
         )
         return self.get_menu('Download Wallpaper', 'Wallpapers', map(self.generate_parsed_command, parsed))
@@ -137,8 +144,8 @@ class WallpaperDL:
                 self.screen.border(0)
                 self.screen.addstr(2, 2, self.menu_data['title'], curses.A_STANDOUT)
                 self.screen.addstr(4, 2, 'Resolution: \'{}\', Saving in: \'{}\''.format(
-                    config[RESOLUTION],
-                    config[WP_DIR]
+                    self.config.resolution,
+                    self.config.save_dir
                 ), curses.A_BOLD)
                 self.screen.addstr(6, 2, WallpaperDL.INSTRUCTIONS)
                 self.screen.addstr(8, 2, 'Page {} - {}'.format(
