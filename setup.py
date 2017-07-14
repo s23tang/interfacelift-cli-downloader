@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name = 'interfacelift-cli',
-    version = '0.1',
+    version = '0.2',
     install_requires = [
         'requests==2.13.0',
         'beautifulsoup4==4.5.3',
