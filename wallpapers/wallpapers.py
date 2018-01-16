@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 from subprocess import call
 import curses, os
 import locale
+import threading
 
 # Init locale
 locale.setlocale(locale.LC_ALL, '')
@@ -112,7 +113,7 @@ class WallpaperDL:
             title=self.menu_data['options'][index]['title']
         )
 
-    def download(self, url, filepath):
+    def download(self, url, filepath, pos, title):
         with open(filepath, 'wb') as handle:
             res = requests.get(url, stream=True)
             i = 0
@@ -120,14 +121,23 @@ class WallpaperDL:
             for block in res.iter_content(WallpaperDL.DOWNLOAD_CHUNK):
                 if not block:
                     break
-                text = "{text} ({percent:.0f}%)".format(
-                    text=self.get_item_text(self.curr_pos),
-                    percent=i * 1.0 * WallpaperDL.DOWNLOAD_CHUNK / total_length * 100
-                )
-                self.screen.addstr(self.curr_pos + 9, 4, text, self.n_color)
-                self.screen.refresh()
-                i += 1
+
+                # Render percentage if same item on screen
+                if title == self.menu_data['options'][pos]['title']:
+                    text = "{text} ({percent:.0f}%)".format(
+                        text=self.get_item_text(pos),
+                        percent=i * 1.0 * WallpaperDL.DOWNLOAD_CHUNK / total_length * 100
+                    )
+                    self.screen.addstr(pos + 9, 4, text, self.n_color)
+                    self.screen.refresh()
+                    i += 1
+
                 handle.write(block)
+
+        if title == self.menu_data['options'][pos]['title']:
+            self.menu_data['options'][pos]['title'] += WallpaperDL.SAVED_TEXT
+            self.screen.addstr(pos + 9, 4, self.get_item_text(pos), self.n_color)
+            self.screen.refresh()
 
     def generate_parsed_command(self, parsed_item):
         dl_path = os.path.join(self.config.save_dir, parsed_item['url'].split('/')[-1])
@@ -150,29 +160,31 @@ class WallpaperDL:
 
     def run_menu(self):
         option_count = len(self.menu_data['options'])  # how many options in this menu
-        old_pos = None
+        old_pos = 0
+
+        self.screen.border(0)
+        self.screen.addstr(2, 2, self.menu_data['title'], curses.A_STANDOUT)
+        self.screen.addstr(4, 2, 'Resolution: \'{}\', Saving in: \'{}\''.format(
+            self.config.resolution,
+            self.config.save_dir
+        ), curses.A_BOLD)
+        self.screen.addstr(6, 2, WallpaperDL.INSTRUCTIONS)
+        self.screen.addstr(8, 2, 'Page {} - {}'.format(
+            self.curr_page,
+            self.menu_data['subtitle']
+        ), curses.A_BOLD)
+
+        for index in range(option_count):
+            textstyle = self.h_color if self.curr_pos == index else self.n_color
+            self.screen.addstr(9 + index, 4, self.get_item_text(index), textstyle)
+            self.screen.clrtoeol()
+
         # Loop until return key is pressed
         while True:
             if self.curr_pos != old_pos:
+                self.screen.addstr(9 + old_pos, 4, self.get_item_text(old_pos), self.n_color)
                 old_pos = self.curr_pos
-                self.screen.border(0)
-                self.screen.addstr(2, 2, self.menu_data['title'], curses.A_STANDOUT)
-                self.screen.addstr(4, 2, 'Resolution: \'{}\', Saving in: \'{}\''.format(
-                    self.config.resolution,
-                    self.config.save_dir
-                ), curses.A_BOLD)
-                self.screen.addstr(6, 2, WallpaperDL.INSTRUCTIONS)
-                self.screen.addstr(8, 2, 'Page {} - {}'.format(
-                    self.curr_page,
-                    self.menu_data['subtitle']
-                ), curses.A_BOLD)
-
-                # Display all the menu items, showing the 'pos' item highlighted
-                for index in range(option_count):
-                    textstyle = self.h_color if self.curr_pos == index else self.n_color
-                    self.screen.addstr(9+index, 4, self.get_item_text(index), textstyle)
-                    self.screen.clrtoeol()
-                    self.screen.refresh()
+                self.screen.addstr(9 + self.curr_pos, 4, self.get_item_text(self.curr_pos), self.h_color)
 
             x = self.screen.getch()  # Gets user input
 
@@ -219,8 +231,11 @@ class WallpaperDL:
                     if menu_link['title'].endswith(WallpaperDL.SAVED_TEXT):
                         call('open -a Preview {}'.format(dl_path).split(' '))
                     else:
-                        self.download(dl_url, dl_path)
-                        menu_link['title'] += WallpaperDL.SAVED_TEXT
+                        download_thread = threading.Thread(
+                            target=self.download,
+                            args=(dl_url, dl_path, self.curr_pos, menu_link['title'])
+                        )
+                        download_thread.start()
                 elif status == WallpaperDL.ST_DEL and menu_link['title'].endswith(WallpaperDL.SAVED_TEXT):
                     os.remove(dl_path)
                     menu_link['title'] = menu_link['title'][:-len(WallpaperDL.SAVED_TEXT)]
