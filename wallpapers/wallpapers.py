@@ -1,4 +1,5 @@
 #-*- coding: utf-8 -*-
+from __future__ import print_function
 import re
 import requests
 import yaml
@@ -28,7 +29,7 @@ class WpConfig:
             self._create_config()
 
     def _create_config(self):
-        print 'Config will be saved to {}'.format(WpConfig.FILE_PATH)
+        print('Config will be saved to {}'.format(WpConfig.FILE_PATH))
         # Get save dir
         save_dir = raw_input('\nDirectory to save wallpapers [{}]: '.format(WpConfig.WP_DIR['default']))
         self.save_dir = os.path.expanduser(save_dir if save_dir else WpConfig.WP_DIR['default'])
@@ -42,7 +43,7 @@ class WpConfig:
         }
         with open(WpConfig.FILE_PATH, 'w') as config_file:
             yaml.dump(config, config_file)
-        print '\nConfig successfully saved to {}'.format(WpConfig.FILE_PATH)
+        print('\nConfig successfully saved to {}'.format(WpConfig.FILE_PATH))
         raw_input('\nPress ENTER to continue...')
 
 
@@ -141,7 +142,7 @@ class WallpaperDL:
 
     def generate_parsed_command(self, parsed_item):
         dl_path = os.path.join(self.config.save_dir, parsed_item['url'].split('/')[-1])
-        text = '{}{}'.format(parsed_item['title'].encode('utf-8'),
+        text = '{}{}'.format(str(parsed_item['title']),
                              WallpaperDL.SAVED_TEXT if os.path.isfile(dl_path) else '')
         return {
             'title': text,
@@ -156,7 +157,7 @@ class WallpaperDL:
                 self.config.resolution, self.curr_page
             )
         )
-        return self.get_menu('Download Wallpaper', 'Wallpapers', map(self.generate_parsed_command, parsed))
+        return self.get_menu('Download Wallpaper', 'Wallpapers', list(map(self.generate_parsed_command, parsed)))
 
     def run_menu(self):
         option_count = len(self.menu_data['options'])  # how many options in this menu
