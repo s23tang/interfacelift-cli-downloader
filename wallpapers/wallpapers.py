@@ -230,7 +230,8 @@ class WallpaperDL:
                 if status == WallpaperDL.ST_EXEC:
                     dl_url = menu_link['url']
                     if menu_link['title'].endswith(WallpaperDL.SAVED_TEXT):
-                        call('open -a Preview {}'.format(dl_path).split(' '))
+                        with open(os.devnull, 'w') as devnull:
+                          call('qlmanage -p {}'.format(dl_path).split(' '), stdout=devnull, stderr=devnull)
                     else:
                         download_thread = threading.Thread(
                             target=self.download,
