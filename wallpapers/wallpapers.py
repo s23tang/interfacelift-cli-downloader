@@ -12,6 +12,9 @@ import threading
 # Init locale
 locale.setlocale(locale.LC_ALL, '')
 
+# Support python 2 and 3
+try: input = raw_input
+except NameError: pass
 
 class WpConfig:
     FILE_PATH = os.path.expanduser('~/.wpconfig')
@@ -31,10 +34,10 @@ class WpConfig:
     def _create_config(self):
         print('Config will be saved to {}'.format(WpConfig.FILE_PATH))
         # Get save dir
-        save_dir = raw_input('\nDirectory to save wallpapers [{}]: '.format(WpConfig.WP_DIR['default']))
+        save_dir = input('\nDirectory to save wallpapers [{}]: '.format(WpConfig.WP_DIR['default']))
         self.save_dir = os.path.expanduser(save_dir if save_dir else WpConfig.WP_DIR['default'])
         # Get resolution
-        resolution = raw_input('\nWallpaper resolution [{}]: '.format(WpConfig.RESOLUTION['default']))
+        resolution = input('\nWallpaper resolution [{}]: '.format(WpConfig.RESOLUTION['default']))
         self.resolution = resolution if resolution else WpConfig.RESOLUTION['default']
         # Create config
         config = {
@@ -44,7 +47,7 @@ class WpConfig:
         with open(WpConfig.FILE_PATH, 'w') as config_file:
             yaml.dump(config, config_file)
         print('\nConfig successfully saved to {}'.format(WpConfig.FILE_PATH))
-        raw_input('\nPress ENTER to continue...')
+        input('\nPress ENTER to continue...')
 
 
 class WallpaperDL:
