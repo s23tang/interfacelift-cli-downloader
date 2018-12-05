@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='interfacelift-cli',
-    version='0.2.1',
+    version='0.2.2',
     author='Ted Tang',
     author_email='s23tang@gmail.com',
     description='Cli tool to download wallapers from Interface Lift',
