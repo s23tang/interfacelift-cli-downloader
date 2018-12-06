@@ -20,7 +20,7 @@ interfacelift-cli
 
 ## TODO
 
-[ ] Code cleanup
-[ ] Tests
-[ ] Better status monitoring
-[ ] Multi-platform support
+  - [ ] Code cleanup
+  - [ ] Tests
+  - [ ] Better status monitoring
+  - [ ] Multi-platform support
