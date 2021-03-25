@@ -11,7 +11,7 @@ setup(
     install_requires=[
         'requests>=2.20.0',
         'beautifulsoup4==4.5.3',
-        'PyYAML==3.12'
+        'PyYAML==5.4'
     ],
     packages=[
         'wallpapers'
